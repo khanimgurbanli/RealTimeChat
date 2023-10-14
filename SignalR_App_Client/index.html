@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <title>SignalR App</title>
+
+    <script src="signalr.min.js"></script>
+    <script src="jquery.min.js"></script>
+
+    <script>
+        $(document).ready(() => {
+            const connection = new signalR.HubConnectionBuilder()
+                .withUrl("https://localhost:7166/mainhub")
+                .withAutomaticReconnect([1000, 1000, 2000])
+                .build();
+
+            //if the connection is lost 
+            async function start() {
+                try {
+                    await connection.start();
+                } catch (error) {
+                    setTimeout(() => start(), 2000);
+                }
+            }
+
+            start();
+
+            function animation() {
+                state.fadeIn(2000, () => {
+                    setTimeout(() => {
+                        state.fadeOut(2000);
+                    }, 2000)
+                });
+            }
+
+            const state = $("#stated");
+            connection.onreconnecting(error => {
+                state.css("background-color", "blue");
+                state.css("color", "white");
+                state.html("Bağlantı qurulur...");
+                animation();
+            });
+
+            connection.onreconnected(connectionId => {
+                state.css("background-color", "green");
+                state.css("color", "white");
+                state.html("Bağlantı quruldu.");
+                animation();
+            });
+
+            connection.onclose(connectionId => {
+                state.css("background-color", "red");
+                state.css("color", "white");
+                state.html("Bağlantı kəsildi.");
+                animation();
+            });
+
+            connection.on("Userjoined", connectionId => {
+                state.css("background-color", "green");
+                state.html(`${connectionId} qoşuldu.`);
+                animation();
+            });
+
+            connection.on("Userleaved", connectionId => {
+                state.css("background-color", "red");
+                state.html(`${connectionId} tərk etdi.`);
+                animation();
+            });
+
+            connection.on("clients", clientsData => {
+                let text = "";
+                $.each(clientsData, (index, item) => {
+                    text += `<li>${item}</li>`;
+                });
+                $("#clients").html(text);
+            });
+
+            $("#btnSend").click(() => {
+                let message = $("#textMessage").val();
+                connection.invoke("SendMessageAsync", message).catch(error => console.log(`Mesaj göndərilən zaman xəta meydana gəldi. ${error}`));
+            });
+
+            connection.on("recieveMessage", message => {
+                $("#messages").append(message + "<br>");
+            });
+
+        });
+    </script>
+
+</head>
+
+<body>
+    <div id="stated" style="display: none;"></div>
+
+    <input type="text" id="textMessage">
+    <button id="btnSend">Send</button>
+
+    <div id="messages"></div>
+
+    <div>
+        <ul id="clients">
+
+        </ul>
+    </div>
+</body>
+
+</html>

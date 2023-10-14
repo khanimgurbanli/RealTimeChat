@@ -1,0 +1,3 @@
+﻿<Project>
+  <Import Project="..\build\SingnalR_App.props" />
+</Project>
